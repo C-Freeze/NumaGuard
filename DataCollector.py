@@ -1,19 +1,23 @@
 from threading import Thread
 import cv2, time, sys
 from PyQt5.QtWidgets import (
-    QApplication, QLabel, QVBoxLayout, QWidget, QLineEdit, QComboBox, QPushButton, QHBoxLayout
+    QApplication, QLabel, QVBoxLayout, QWidget, QLineEdit, QComboBox, QPushButton, QHBoxLayout, QGridLayout, QScrollArea
     )
 from PyQt5.QtGui import QImage, QPixmap
+from PyQt5.QtCore import Qt, QTimer
+import os
 
 class DataEntry(QWidget):
-    def __init__(self):
+    def __init__(self, num_webcams=2):
         super().__init__()
+        self.num_webcams = num_webcams
         self.initUI()
+        self.out_path = "./data/"
+        if not os.path.exists(self.out_path):
+            os.makedirs(self.out_path)
 
     def initUI(self):
-        self.setGeometry(300, 300, 300, 220)
-        self.setWindowTitle('Thread')
-
+        self.setGeometry(100, 100, 800, 600)
         self.person_label = QLabel("Person Name:")
         # drop down list
         x = ["Carter", "Cody", "Tahlia", "Tyler"]
@@ -24,21 +28,110 @@ class DataEntry(QWidget):
         self.sequence_edit = QLineEdit()
 
         self.start_button = QPushButton("Start")
-        self.start_button.setStyleSheet("background-color: #4CAF50; color: white; border: none; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; font-size: 16px; margin: 4px 2px; cursor: pointer;")
-
-        # self.start_button.clicked.connect(self.start_thread)
-
+        self.start_button.setStyleSheet("""
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                text-align: center;
+                text-decoration: none;
+                font-size: 16px;
+                margin: 4px 2px;
+            }
+            QPushButton:hover {
+                background-color: #45a049;
+            }
+            QPushButton:pressed {
+                background-color: #3e8e41;
+            }
+        """)
+        self.start_button.clicked.connect(self.start_recording)
         self.start_button.clicked.connect(
             lambda: print(self.person_edit.currentText(), self.sequence_edit.text())
         )
+        # self.start_button.clicked.connect(self.start_thread)
+        self.stop_button = QPushButton("Stop")
+        self.stop_button.setStyleSheet("""
+            QPushButton {
+                background-color: #f44336;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                text-align: center;
+                text-decoration: none;
+                font-size: 16px;
+                margin: 4px 2px;
+            }
+            QPushButton:hover {
+                background-color: #d32f2f;
+            }
+            QPushButton:pressed {
+                background-color: #b71c1c;
+            }
+        """)
+        self.stop_button.clicked.connect(self.stop_recording)
+        self.stop_button.clicked.connect(lambda: print(f'Recording saved to {self.out_path}'))
+        self.stop_button.setEnabled(False)
+
 
         self.exit_button = QPushButton("Exit")
-        self.exit_button.setStyleSheet("background-color: #f44336; color: white; border: none; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; font-size: 16px; margin: 4px 2px; cursor: pointer;")
-        # self.exit_button.clicked.connect(sys.exit)
-        def exit_app():
-            self.vw.close()
-            sys.exit()
-        self.exit_button.clicked.connect(exit_app)
+        self.exit_button.setStyleSheet("""
+            QPushButton {
+                background-color: #555555;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                text-align: center;
+                text-decoration: none;
+                font-size: 16px;
+                margin: 4px 2px;
+            }
+            QPushButton:hover {
+                background-color: #424242;
+            }
+            QPushButton:pressed {
+                background-color: #212121;
+            }
+        """)
+        self.exit_button.clicked.connect(self.exit_app)
+
+        self.video_frames = []
+        self.video_streams = []
+        self.recordings = []
+        self.outs = []
+
+        for i in range(self.num_webcams):
+            video_frame = QLabel()
+            video_frame.setFixedSize(320, 240)
+            video_frame.setStyleSheet("border: 1px solid black")
+            self.video_frames.append(video_frame)
+
+            video_stream = cv2.VideoCapture(i)
+            video_stream.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
+            video_stream.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
+            video_stream.set(cv2.CAP_PROP_FPS, 30)
+            video_stream.set(cv2.CAP_PROP_BUFFERSIZE, 3)
+            self.video_streams.append(video_stream)
+
+            self.recordings.append(False)
+            self.outs.append(None)
+
+        self.recording_label = QLabel("Recording: OFF")
+        self.recording_label.setAlignment(Qt.AlignCenter)
+        self.recording_label.setStyleSheet("color: red; font-weight: bold")
+
+        grid_layout = QGridLayout()
+        for i in range(self.num_webcams):
+            row = i // 2
+            col = i % 2
+            grid_layout.addWidget(self.video_frames[i], row, col)
+
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_content = QWidget()
+        scroll_content.setLayout(grid_layout)
+        scroll_area.setWidget(scroll_content)
 
         vbox = QVBoxLayout()
         vbox.addWidget(self.person_label)
@@ -46,77 +139,70 @@ class DataEntry(QWidget):
         vbox.addWidget(self.sequence_label)
         vbox.addWidget(self.sequence_edit)
         vbox.addWidget(self.start_button)
+        vbox.addWidget(self.stop_button)
         vbox.addWidget(self.exit_button)
+        vbox.addWidget(scroll_area)
+        vbox.addWidget(self.recording_label)
 
         self.setLayout(vbox)
-        self.vw = VideoWindow()
-        self.vw.show()
-        self.show()
 
-class VideoStreamWidget(QWidget):
-    def __init__(self, src=0):
-        super().__init__()
-        self.video_stream = cv2.VideoCapture(src)
-        self.video_stream.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
-        self.video_stream.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
-        self.video_stream.set(cv2.CAP_PROP_FPS, 30)
-        self.video_stream.set(cv2.CAP_PROP_BUFFERSIZE, 3)
-        self.initUI()
-        self.recording = False
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.update_frames)
+        self.timer.start(30)
 
-    def update(self):
-        while True:
-            ret, frame = self.video_stream.read()
+    def update_frames(self):
+        for i in range(self.num_webcams):
+            ret, frame = self.video_streams[i].read()
             if ret:
-                self.display_frame(frame)
-            else:
-                break
+                if self.recordings[i]:
+                    self.outs[i].write(frame)
+                self.display_frame(frame, i)
 
-    def show_frame(self):
-        ret, frame = self.video_stream.read()
-        if ret:
-            self.display_frame(frame)
-            
-    def initUI(self):
-        self.video_frame = QLabel()
-        self.video_frame.setFixedSize(320, 240)
-        self.video_frame.setStyleSheet("border: 1px solid black")
-        
-        self.hbox = QHBoxLayout()
-        self.hbox.addWidget(self.video_frame)
-        self.setLayout(self.hbox)
-        
-        self.thread = Thread(target=self.update, args=())
-        self.thread.daemon = True
-        self.thread.start()
-        
-    def display_frame(self, frame):
+    def display_frame(self, frame, index):
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         frame = cv2.resize(frame, (320, 240))
         img = QImage(frame, frame.shape[1], frame.shape[0], QImage.Format_RGB888)
         pix = QPixmap.fromImage(img)
-        self.video_frame.setPixmap(pix)
+        self.video_frames[index].setPixmap(pix)
 
-class VideoWindow(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Video Feeds")
-        self.setGeometry(400, 100, 500, 400)
-        self.initUI()
-        
-    def initUI(self):
-        self.vbox = QVBoxLayout()
-        
-        self.streams = [VideoStreamWidget(i) for i in range(2)]
+    def start_recording(self):
+        person = self.person_edit.currentText()
+        sequence = self.sequence_edit.text()
 
-        for stream in self.streams:
-            self.vbox.addWidget(stream)
-        
-        self.setLayout(self.vbox)
-        self.show()
+        for i in range(self.num_webcams):
+            if not self.recordings[i]:
+                self.recordings[i] = True
+                filename = f"{person}_{sequence}_cam{i+1}.avi"
+                fourcc = cv2.VideoWriter_fourcc(*'XVID')
+                self.outs[i] = cv2.VideoWriter(self.out_path + filename, fourcc, 30, (320, 240))
+
+        self.recording_label.setText("Recording: ON")
+        self.recording_label.setStyleSheet("color: green; font-weight: bold")
+        self.start_button.setEnabled(False)
+        self.stop_button.setEnabled(True)
+
+    def stop_recording(self):
+        for i in range(self.num_webcams):
+            if self.recordings[i]:
+                self.recordings[i] = False
+                self.outs[i].release()
+                self.outs[i] = None
+
+        self.recording_label.setText("Recording: OFF")
+        self.recording_label.setStyleSheet("color: red; font-weight: bold")
+        self.start_button.setEnabled(True)
+        self.stop_button.setEnabled(False)
+
+    def exit_app(self):
+        self.stop_recording()
+        for video_stream in self.video_streams:
+            video_stream.release()
+        self.close()
+        sys.exit()
 
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     ex = DataEntry()
+    ex.show()
     sys.exit(app.exec_())
