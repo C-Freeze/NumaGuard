@@ -1,14 +1,14 @@
 from threading import Thread
 import cv2, time, sys
 from PyQt5.QtWidgets import (
-    QApplication, QLabel, QVBoxLayout, QWidget, QLineEdit, QComboBox, QPushButton, QHBoxLayout, QGridLayout, QScrollArea
+    QApplication, QLabel, QVBoxLayout, QWidget, QLineEdit, QComboBox, QPushButton, QHBoxLayout, QGridLayout, QScrollArea, QListWidget, QFileDialog
     )
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtCore import Qt, QTimer
 import os
 
 class DataEntry(QWidget):
-    def __init__(self, num_webcams=2):
+    def __init__(self, num_webcams=4):
         super().__init__()
         self.num_webcams = num_webcams
         self.initUI()
@@ -19,7 +19,6 @@ class DataEntry(QWidget):
     def initUI(self):
         self.setGeometry(100, 100, 800, 600)
         self.person_label = QLabel("Person Name:")
-        # drop down list
         x = ["Carter", "Cody", "Tahlia", "Tyler"]
         self.person_edit = QComboBox()
         self.person_edit.addItems(x)
@@ -28,6 +27,7 @@ class DataEntry(QWidget):
         self.sequence_edit = QLineEdit()
 
         self.start_button = QPushButton("Start")
+        
         self.start_button.setStyleSheet("""
             QPushButton {
                 background-color: #4CAF50;
@@ -46,11 +46,11 @@ class DataEntry(QWidget):
                 background-color: #3e8e41;
             }
         """)
+        
         self.start_button.clicked.connect(self.start_recording)
         self.start_button.clicked.connect(
             lambda: print(self.person_edit.currentText(), self.sequence_edit.text())
         )
-        # self.start_button.clicked.connect(self.start_thread)
         self.stop_button = QPushButton("Stop")
         self.stop_button.setStyleSheet("""
             QPushButton {
@@ -94,6 +94,7 @@ class DataEntry(QWidget):
                 background-color: #212121;
             }
         """)
+        
         self.exit_button.clicked.connect(self.exit_app)
 
         self.video_frames = []
@@ -120,6 +121,20 @@ class DataEntry(QWidget):
         self.recording_label = QLabel("Recording: OFF")
         self.recording_label.setAlignment(Qt.AlignCenter)
         self.recording_label.setStyleSheet("color: red; font-weight: bold")
+        
+        self.load_button = QPushButton("Load Sequences")
+        self.load_button.clicked.connect(self.load_sequences)
+
+        self.sequence_list = QListWidget()
+        self.sequence_list.itemClicked.connect(self.update_sequence)
+
+        self.prev_button = QPushButton("Previous")
+        self.prev_button.clicked.connect(self.previous_sequence)
+        self.prev_button.setEnabled(False)
+
+        self.next_button = QPushButton("Next")
+        self.next_button.clicked.connect(self.next_sequence)
+        self.next_button.setEnabled(False)
 
         grid_layout = QGridLayout()
         for i in range(self.num_webcams):
@@ -136,19 +151,63 @@ class DataEntry(QWidget):
         vbox = QVBoxLayout()
         vbox.addWidget(self.person_label)
         vbox.addWidget(self.person_edit)
-        vbox.addWidget(self.sequence_label)
-        vbox.addWidget(self.sequence_edit)
         vbox.addWidget(self.start_button)
         vbox.addWidget(self.stop_button)
         vbox.addWidget(self.exit_button)
         vbox.addWidget(scroll_area)
         vbox.addWidget(self.recording_label)
 
+        vbox.addWidget(self.load_button)
+        vbox.addWidget(self.sequence_list)
+        vbox.addWidget(self.prev_button)
+        vbox.addWidget(self.next_button)
+        vbox.addWidget(self.sequence_label)
+        vbox.addWidget(self.sequence_edit)
         self.setLayout(vbox)
 
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_frames)
         self.timer.start(30)
+        
+    def load_sequences(self):
+        file_dialog = QFileDialog()
+        file_dialog.setNameFilter("Text Files (*.txt)")
+        if file_dialog.exec_():
+            selected_file = file_dialog.selectedFiles()[0]
+            self.load_sequence_file(selected_file)
+
+    def load_sequence_file(self, file_path):
+        self.sequence_list.clear()
+        self.sequences = []
+        with open(file_path, 'r') as file:
+            for line in file:
+                self.sequences.append(line.strip())
+        self.sequence_list.addItems(self.sequences)
+        self.current_index = 0
+        self.prev_button.setEnabled(False)
+        self.next_button.setEnabled(len(self.sequences) > 1)
+
+    def update_sequence(self, item):
+        self.current_index = self.sequence_list.currentRow()
+        self.sequence_edit.setText(item.text())
+
+    def previous_sequence(self):
+        if self.current_index > 0:
+            self.current_index -= 1
+            self.sequence_list.setCurrentRow(self.current_index)
+            self.sequence_edit.setText(self.sequences[self.current_index])
+            self.next_button.setEnabled(True)
+            if self.current_index == 0:
+                self.prev_button.setEnabled(False)
+
+    def next_sequence(self):
+        if self.current_index < len(self.sequences) - 1:
+            self.current_index += 1
+            self.sequence_list.setCurrentRow(self.current_index)
+            self.sequence_edit.setText(self.sequences[self.current_index])
+            self.prev_button.setEnabled(True)
+            if self.current_index == len(self.sequences) - 1:
+                self.next_button.setEnabled(False)
 
     def update_frames(self):
         for i in range(self.num_webcams):
