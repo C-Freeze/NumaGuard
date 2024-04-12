@@ -1,0 +1,3 @@
+[submodule "ViViT-pytorch"]
+	path = ViViT-pytorch
+	url = https://github.com/rishikksh20/ViViT-pytorch.git
