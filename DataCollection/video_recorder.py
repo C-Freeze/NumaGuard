@@ -55,8 +55,8 @@ def update_is_looping():
     global is_looping
     is_looping = app.is_looping.isChecked()
 
-def play_ding_sound():
-    playsound("./sounds/ding.mp3")
+def play_ding_sound(file_name):
+    playsound(f"./sounds/{file_name}")
 
 
 def update_spin_box():
@@ -126,7 +126,7 @@ def update_recording_counter():
         
         print("Saving Video...")
         app.recording_counter_label.setText(f"Saving Video!")
-        play_ding_sound()
+        play_ding_sound("ding.mp3")
         time.sleep(3)
         file_name = f"{BASE_DIR}{record_handler.current_pin}_{get_time_stamp()}.avi"
         is_recording = False
@@ -233,16 +233,22 @@ def shot_made_missed_func():
         app.record_btn.setText("Start Recording")
 
 
-    n_thread = threading.Thread(target=play_ding_sound)
+    n_thread = threading.Thread(target=play_ding_sound, args=(6,))
     n_thread.start()
 
 
 def start_frame_recording_thread():
     global threads
     global is_recording
+    
+    n_thread = threading.Thread(target=play_ding_sound, args=("bingus.wav",))
+    n_thread.start()
+    
     n_thread = threading.Thread(target=record_frames)
     threads.append(n_thread)
     n_thread.start()
+    
+    
 
 
 def start_all_frame_recording_thread():
