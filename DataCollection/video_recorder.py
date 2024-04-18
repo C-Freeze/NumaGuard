@@ -194,8 +194,11 @@ def recording_func():
         app.record_btn.setText("Start Recording")
         reset_recording_counter()
         all_frames.clear()
+        print("Recording Deleted")
 
     else:
+        print("Starting In 3 Seconds!")
+        time.sleep(3)
         is_recording = True
         start_frame_recording_thread()
         start_recording_counter()
