@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Full Screen Cell Phone Keypad</title>
+    <style>
+        body, html {
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #f0f0f0;
+
+        }
+        .keypad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            width: 100vw; 
+            height: 100vh; 
+            padding: 30px;
+            box-sizing: border-box;
+        }
+        .key {
+            background-color: #eee;
+            border: none;
+            font-size: 6vw; 
+            color: #333;
+            border-radius: 10px;
+            box-shadow: 0 8px #999;
+            aspect-ratio: 1 / 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .key:active {
+            box-shadow: 0 4px #666;
+            transform: translateY(4px);
+        }
+
+        .prevent-select {
+            -webkit-user-select: none;
+            -ms-user-select: none;
+            user-select: none; 
+          }
+    </style>
+</head>
+<body>
+    <div class="keypad">
+        <button class="key">1</button>
+        <button class="key">2</button>
+        <button class="key">3</button>
+        <button class="key">4</button>
+        <button class="key">5</button>
+        <button class="key">6</button>
+        <button class="key">7</button>
+        <button class="key">8</button>
+        <button class="key">9</button>
+        <button class="key">*</button>
+        <button class="key">0</button>
+        <button class="key">#</button>
+    </div>
+</body>
+</html>
